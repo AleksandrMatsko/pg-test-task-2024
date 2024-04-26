@@ -1,0 +1,10 @@
+name: pg-test-task-2024
+
+services:
+  executor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    ports:
+      - "12001:8081"

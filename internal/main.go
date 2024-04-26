@@ -12,7 +12,7 @@ import (
 )
 
 func Main() {
-	host := "localhost"
+	host := "0.0.0.0"
 	port := 8081
 
 	log.Printf("configuring endpoints...")
