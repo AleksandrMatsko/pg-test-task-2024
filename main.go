@@ -1,7 +1,7 @@
 package main
 
-import "fmt"
+import "pg-test-task-2024/internal"
 
 func main() {
-	fmt.Println("Hello World")
+	internal.Main()
 }
