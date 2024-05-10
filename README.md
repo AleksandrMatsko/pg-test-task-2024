@@ -1,7 +1,7 @@
 # Start server
 
 ```shell
-go build -v ./...
+go build -v pg-test-task-2024
 ./pg-test-task-2024
 ```
 
