@@ -13,5 +13,5 @@ const (
 const (
 	defaultHost   = "0.0.0.0"
 	defaultPort   = "8081"
-	defaultCmdDir = "/commands/"
+	defaultCmdDir = "/tmp/commands/"
 )

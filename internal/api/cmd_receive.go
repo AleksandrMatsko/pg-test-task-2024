@@ -34,9 +34,10 @@ func cmdReceiveHandler(w http.ResponseWriter, r *http.Request) {
 	contentType := r.Header.Get("Content-Type")
 	if contentType != "text/plain" {
 		logger.Printf("Invalid content type: %s, expected text/plain", contentType)
-		w.WriteHeader(http.StatusBadRequest)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnsupportedMediaType)
 		_ = encoder.Encode(errResponse{
-			ShortDesc: "Bad Request",
+			ShortDesc: "Unsupported Media Type",
 			LongDesc:  fmt.Sprintf("Bad Content-Type, expected text/plain, got %s", contentType),
 		})
 		return
@@ -46,6 +47,7 @@ func cmdReceiveHandler(w http.ResponseWriter, r *http.Request) {
 	str := string(bytes)
 	if !isShellScript(str) {
 		logger.Printf("Not a shell script")
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		_ = encoder.Encode(errResponse{
 			ShortDesc: "Bad Request",
@@ -61,6 +63,7 @@ func cmdReceiveHandler(w http.ResponseWriter, r *http.Request) {
 	f, err := os.OpenFile(config.GetCmdDir()+id.String(), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0700)
 	if err != nil {
 		logger.Printf("Failed to create file: %v", err)
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
 		_ = encoder.Encode(errResponse{
 			ShortDesc: "Internal Server Error",
@@ -73,6 +76,7 @@ func cmdReceiveHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Printf("Failed to write body to file: %v", err)
 		_ = os.Remove(f.Name())
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
 		_ = encoder.Encode(errResponse{
 			ShortDesc: "Internal Server Error",
@@ -83,6 +87,7 @@ func cmdReceiveHandler(w http.ResponseWriter, r *http.Request) {
 	if written != len(bytes) {
 		logger.Printf("Failed to write body to file: wrote %d of %d bytes expected", written, r.ContentLength)
 		_ = os.Remove(f.Name())
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
 		_ = encoder.Encode(errResponse{
 			ShortDesc: "Internal Server Error",
