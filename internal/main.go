@@ -8,17 +8,25 @@ import (
 	"os"
 	"os/signal"
 	"pg-test-task-2024/internal/api"
+	"pg-test-task-2024/internal/config"
 	"time"
 )
 
 func Main() {
-	host := "0.0.0.0"
-	port := 8081
+	log.Println("starting server")
+	log.Println("prepare directory for commands...")
+	err := config.PrepareCmdDir(config.GetCmdDir())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	host := config.GetHost()
+	port := config.GetPort()
 
 	log.Printf("configuring endpoints...")
 	r := api.ConfigureEndpoints()
 	server := &http.Server{
-		Addr:    fmt.Sprintf("%s:%d", host, port),
+		Addr:    fmt.Sprintf("%s:%s", host, port),
 		Handler: r,
 	}
 
@@ -26,7 +34,7 @@ func Main() {
 	defer cancel()
 
 	go func() {
-		log.Printf("listening on http://%s:%d ...", host, port)
+		log.Printf("listening ...")
 		err := server.ListenAndServe()
 		if err != nil {
 			log.Println(err)
@@ -41,7 +49,7 @@ func Main() {
 
 	ctx, cancelByTimeout := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancelByTimeout()
-	err := server.Shutdown(ctx)
+	err = server.Shutdown(ctx)
 	if err != nil {
 		log.Printf("Error shutting down server gracefully: %v", err)
 	}

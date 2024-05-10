@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"pg-test-task-2024/internal/config"
 )
 
 type cmdReceivedResponse struct {
@@ -27,8 +28,7 @@ func cmdReceiveHandler(w http.ResponseWriter, r *http.Request) {
 	// TODO: save cmd text in db and retrieve id
 	id := uuid.New()
 
-	// TODO: use base dir for all files
-	f, err := os.OpenFile(id.String(), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0700)
+	f, err := os.OpenFile(config.GetCmdDir()+id.String(), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0700)
 	if err != nil {
 		logger.Printf("Failed to create file: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
