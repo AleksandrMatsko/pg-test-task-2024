@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/google/uuid"
 	"io"
 	"net/http"
@@ -14,6 +15,8 @@ type cmdReceivedResponse struct {
 	Id string `json:"id"`
 }
 
+var shellPattern = regexp.MustCompile(`(^#!/bin/bash|^#!/bin/sh)`)
+
 // isShellScript checks if file starts with any of sequences
 //   - #!/bin/bash
 //   - #!/bin/sh
@@ -21,16 +24,21 @@ type cmdReceivedResponse struct {
 // Check is performed with regular expressions.
 // I'm sure there is more suitable way to do it.
 func isShellScript(content string) bool {
-	pattern := regexp.MustCompile(`(^#!/bin/bash|^#!/bin/sh)`)
-	return pattern.MatchString(content)
+	return shellPattern.MatchString(content)
 }
 
 func cmdReceiveHandler(w http.ResponseWriter, r *http.Request) {
 	logger := getLogger(r)
+	encoder := json.NewEncoder(w)
 
-	if r.Header.Get("Content-Type") != "text/plain" {
-		logger.Printf("Invalid content type: %s", r.Header.Get("Content-Type"))
+	contentType := r.Header.Get("Content-Type")
+	if contentType != "text/plain" {
+		logger.Printf("Invalid content type: %s, expected text/plain", contentType)
 		w.WriteHeader(http.StatusBadRequest)
+		_ = encoder.Encode(errResponse{
+			ShortDesc: "Bad Request",
+			LongDesc:  fmt.Sprintf("Bad Content-Type, expected text/plain, got %s", contentType),
+		})
 		return
 	}
 
@@ -39,6 +47,10 @@ func cmdReceiveHandler(w http.ResponseWriter, r *http.Request) {
 	if !isShellScript(str) {
 		logger.Printf("Not a shell script")
 		w.WriteHeader(http.StatusBadRequest)
+		_ = encoder.Encode(errResponse{
+			ShortDesc: "Bad Request",
+			LongDesc:  "Not a shell script",
+		})
 		return
 	}
 
@@ -50,6 +62,9 @@ func cmdReceiveHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Printf("Failed to create file: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		_ = encoder.Encode(errResponse{
+			ShortDesc: "Internal Server Error",
+		})
 		return
 	}
 	defer f.Close()
@@ -59,6 +74,9 @@ func cmdReceiveHandler(w http.ResponseWriter, r *http.Request) {
 		logger.Printf("Failed to write body to file: %v", err)
 		_ = os.Remove(f.Name())
 		w.WriteHeader(http.StatusInternalServerError)
+		_ = encoder.Encode(errResponse{
+			ShortDesc: "Internal Server Error",
+		})
 		return
 	}
 
@@ -66,13 +84,15 @@ func cmdReceiveHandler(w http.ResponseWriter, r *http.Request) {
 		logger.Printf("Failed to write body to file: wrote %d of %d bytes expected", written, r.ContentLength)
 		_ = os.Remove(f.Name())
 		w.WriteHeader(http.StatusInternalServerError)
+		_ = encoder.Encode(errResponse{
+			ShortDesc: "Internal Server Error",
+		})
 		return
 	}
 
 	// TODO: submit cmd to executor
 
 	w.Header().Set("Content-Type", "application/json")
-	encoder := json.NewEncoder(w)
 	_ = encoder.Encode(cmdReceivedResponse{Id: id.String()})
 	logger.Printf("Command added: %s", f.Name())
 }
