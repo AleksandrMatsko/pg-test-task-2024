@@ -5,9 +5,10 @@ const (
 )
 
 const (
-	hostEnv   = envPrefix + "_HOST"
-	portEnv   = envPrefix + "_PORT"
-	cmdDirEnv = envPrefix + "_CMD_DIR"
+	hostEnv      = envPrefix + "_HOST"
+	portEnv      = envPrefix + "_PORT"
+	cmdDirEnv    = envPrefix + "_CMD_DIR"
+	dbConnStrEnv = envPrefix + "_DB_CONN_STR"
 )
 
 const (

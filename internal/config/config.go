@@ -1,6 +1,9 @@
 package config
 
-import "os"
+import (
+	"fmt"
+	"os"
+)
 
 func GetHost() string {
 	s := os.Getenv(hostEnv)
@@ -22,6 +25,14 @@ func GetCmdDir() string {
 	s := os.Getenv(cmdDirEnv)
 	if s == "" {
 		return defaultCmdDir
+	}
+	return s
+}
+
+func GetDbConnStr() string {
+	s := os.Getenv(dbConnStrEnv)
+	if s == "" {
+		panic(fmt.Errorf("db connection string is empty"))
 	}
 	return s
 }
