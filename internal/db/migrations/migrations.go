@@ -9,7 +9,7 @@ import (
 )
 
 func Apply() {
-	log.Println("applying migrations")
+	log.Println("applying migrations...")
 	after, _ := strings.CutPrefix(config.GetDbConnStr(), "postgres")
 	m, err := migrate.New("file://scripts/migrations", "pgx"+after)
 	if err != nil {
