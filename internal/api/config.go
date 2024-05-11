@@ -3,9 +3,14 @@ package api
 import (
 	"github.com/gorilla/mux"
 	"net/http"
+	"pg-test-task-2024/internal/db"
 )
 
-func ConfigureEndpoints() *mux.Router {
+var doTransactional db.TransactionWorker
+
+func ConfigureEndpoints(starter db.TransactionWorker) *mux.Router {
+	doTransactional = starter
+
 	r := mux.NewRouter()
 
 	r.NotFoundHandler = notFoundHandler{}

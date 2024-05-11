@@ -3,12 +3,17 @@ package internal
 import (
 	"context"
 	"fmt"
+	_ "github.com/golang-migrate/migrate/v4/database/pgx"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"pg-test-task-2024/internal/api"
 	"pg-test-task-2024/internal/config"
+	"pg-test-task-2024/internal/db"
+	"pg-test-task-2024/internal/db/migrations"
 	"time"
 )
 
@@ -20,18 +25,26 @@ func Main() {
 		log.Fatal(err)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	migrations.Apply()
+
+	pool, err := pgxpool.Connect(ctx, config.GetDbConnStr())
+	if err != nil {
+		log.Fatalf("failed to connect to database: %v", err)
+	}
+
 	host := config.GetHost()
 	port := config.GetPort()
 
 	log.Printf("configuring endpoints...")
-	r := api.ConfigureEndpoints()
+	r := api.ConfigureEndpoints(
+		db.TransactionWorkerProvider(pool))
 	server := &http.Server{
 		Addr:    fmt.Sprintf("%s:%s", host, port),
 		Handler: r,
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	go func() {
 		log.Printf("listening ...")

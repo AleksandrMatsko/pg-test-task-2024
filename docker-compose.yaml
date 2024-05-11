@@ -1,10 +1,32 @@
 name: pg-test-task-2024
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=rmuser
+      - POSTGRES_PASSWORD=rmpassword
+      - POSTGRES_DB=executor_db
+    ports:
+     - "12002:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready" ]
+      interval: 10s
+      timeout: 5s
+      retries: 2
+
+
   executor:
     build:
       context: .
       dockerfile: Dockerfile
 
+    environment:
+      - EXECUTOR_DB_CONN_STR=postgres://rmuser:rmpassword@postgres:5432/executor_db
+
     ports:
       - "12001:8081"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
