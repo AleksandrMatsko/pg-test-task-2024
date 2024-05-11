@@ -2,7 +2,7 @@ BEGIN;
 
 CREATE TABLE commands(
     id      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    content TEXT NOT NULL,
+    source TEXT NOT NULL,
 
     -- 'running' | 'error' | 'finished'
     status TEXT NOT NULL,
