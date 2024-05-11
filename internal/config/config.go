@@ -36,3 +36,11 @@ func GetDbConnStr() string {
 	}
 	return s
 }
+
+func GetMigrationsSource() string {
+	s := os.Getenv(migrationsSourceEnv)
+	if s == "" {
+		return defaultMigrationsSource
+	}
+	return s
+}

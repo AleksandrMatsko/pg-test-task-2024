@@ -5,7 +5,6 @@ import (
 	"fmt"
 	_ "github.com/golang-migrate/migrate/v4/database/pgx"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"log"
 	"net/http"
@@ -13,6 +12,7 @@ import (
 	"os/signal"
 	"pg-test-task-2024/internal/api"
 	"pg-test-task-2024/internal/config"
+	"pg-test-task-2024/internal/db"
 	"pg-test-task-2024/internal/db/migrations"
 	"time"
 )
@@ -40,15 +40,7 @@ func Main() {
 
 	log.Printf("configuring endpoints...")
 	r := api.ConfigureEndpoints(
-		func(ctx context.Context, worker func(tx pgx.Tx) error) error {
-			tx, err := pool.Begin(ctx)
-			if err != nil {
-				return err
-			}
-			defer tx.Rollback(ctx)
-			err = worker(tx)
-			return err
-		})
+		db.TransactionWorkerProvider(pool))
 	server := &http.Server{
 		Addr:    fmt.Sprintf("%s:%s", host, port),
 		Handler: r,

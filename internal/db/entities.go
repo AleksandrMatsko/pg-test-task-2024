@@ -8,6 +8,6 @@ type CommandEntity struct {
 	Status     CommandStatus `db:"status"`
 	StatusDesc string        `db:"status_desc"`
 	Output     string        `db:"output"`
-	ExitCode   int           `db:"exit_code"`
-	Signal     int           `db:"signal"`
+	ExitCode   *int          `db:"exit_code"`
+	Signal     *int          `db:"signal"`
 }
