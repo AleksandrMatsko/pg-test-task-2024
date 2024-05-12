@@ -15,6 +15,7 @@ import (
 	"pg-test-task-2024/internal/config"
 	"pg-test-task-2024/internal/db"
 	"pg-test-task-2024/internal/db/migrations"
+	"pg-test-task-2024/internal/executor"
 	"strings"
 	"testing"
 	"time"
@@ -122,6 +123,12 @@ func TestCmdReceiveHandler_WithShellScript(t *testing.T) {
 		t.Fatalf("failed to connect to testcontainer db: %s", err)
 	}
 	doTransactional = db.TransactionWorkerProvider(pool)
+	execChan := make(chan string, 1)
+	submit = executor.SubmitterProvider(execChan)
+	t.Cleanup(func() {
+		doTransactional = nil
+		submit = nil
+	})
 
 	req := httptest.NewRequest("POST", "/api/v1/cmd", strings.NewReader(correctScript))
 	req.Header.Set("Content-Type", "text/plain")
@@ -154,13 +161,14 @@ func TestCmdReceiveHandler_WithShellScript(t *testing.T) {
 	}
 
 	// check that file is created
-	f, err := os.Open(config.GetCmdDir() + rsp.Id)
+	expectedFileName := config.GetCmdDir() + rsp.Id
+	f, err := os.Open(expectedFileName)
 	if err != nil {
 		t.Fatalf("unexpected error opening command file: %v", err)
 	}
 	defer f.Close()
 	t.Cleanup(func() {
-		_ = os.Remove(config.GetCmdDir() + rsp.Id)
+		_ = os.Remove(expectedFileName)
 	})
 
 	bytes, err := io.ReadAll(f)
@@ -192,6 +200,12 @@ func TestCmdReceiveHandler_WithShellScript(t *testing.T) {
 		Source: correctScript,
 		Status: db.Running,
 	})
+
+	close(execChan)
+	fname := <-execChan
+	if fname != expectedFileName {
+		t.Fatalf("expected sending file name to executor's chan: got %v expected %v", fname, expectedFileName)
+	}
 }
 
 func checkCommandsEntities(t *testing.T, got, expected db.CommandEntity) {
