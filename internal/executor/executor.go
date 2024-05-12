@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/google/uuid"
 	"log"
+	"os"
 	"pg-test-task-2024/internal/config"
 	"pg-test-task-2024/internal/db"
 	"sync"
@@ -58,6 +59,7 @@ func New(toExecChan <-chan uuid.UUID, worker db.TransactionWorker, customRunner 
 
 // Start starts separate goroutine
 func (e *Executor) Start(ctx context.Context) {
+	// TODO: use context.AfterFunc to register function for marking all running commands as canceled
 	go func() {
 		for {
 			select {
@@ -67,6 +69,7 @@ func (e *Executor) Start(ctx context.Context) {
 			case id, ok := <-e.toExecChan:
 				if !ok {
 					e.logger.Printf("stopping, because chan closed")
+					return
 				}
 				fname := config.GetCmdDir() + id.String()
 				e.logger.Printf("request to exec: %s", fname)
@@ -77,7 +80,7 @@ func (e *Executor) Start(ctx context.Context) {
 				e.runningCommands[id] = runnerCancel
 				e.mtx.Unlock()
 				go func() {
-					//defer os.Remove(fname)
+					defer os.Remove(fname)
 					defer runnerCancel()
 
 					// run the command

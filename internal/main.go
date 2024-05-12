@@ -40,6 +40,8 @@ func Main() {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
 
+	// TODO: mark all running commands as error commands and try to remove files
+
 	exe := executor.New(toExecChan, db.TransactionWorkerProvider(pool), nil)
 	exe.Start(ctx)
 
