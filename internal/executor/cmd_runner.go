@@ -57,6 +57,7 @@ func defaultRunner(ctx context.Context, id uuid.UUID, worker db.TransactionWorke
 		setCmdFailed(ctx, worker, id, "failed to start script")
 		return
 	}
+	logger.Printf("command started")
 
 	buffer := make([]byte, 1024)
 	for {
@@ -94,11 +95,7 @@ func defaultRunner(ctx context.Context, id uuid.UUID, worker db.TransactionWorke
 		var exitErr *exec.ExitError
 		if !errors.As(err, &exitErr) {
 			logger.Printf("cmd.Wait err: %s", err)
-			if errors.Is(err, context.Canceled) {
-				setCmdFailed(ctx, worker, id, "cancelled")
-			} else {
-				setCmdFailed(ctx, worker, id, "internal error")
-			}
+			setCmdFailed(ctx, worker, id, "internal error")
 			return
 		}
 	}

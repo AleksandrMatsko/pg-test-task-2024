@@ -39,6 +39,7 @@ func Main() {
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
+	defer pool.Close()
 
 	// TODO: mark all running commands as error commands and try to remove files
 
@@ -52,6 +53,9 @@ func Main() {
 	r := api.ConfigureEndpoints(
 		db.TransactionWorkerProvider(pool),
 		executor.SubmitterProvider(toExecChan),
+		func(id uuid.UUID) error {
+			return exe.CancelCmd(id)
+		},
 	)
 	server := &http.Server{
 		Addr:    fmt.Sprintf("%s:%s", host, port),
@@ -78,4 +82,5 @@ func Main() {
 	if err != nil {
 		log.Printf("Error shutting down server gracefully: %v", err)
 	}
+	cancel()
 }
