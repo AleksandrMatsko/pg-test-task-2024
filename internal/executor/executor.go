@@ -3,6 +3,7 @@ package executor
 import (
 	"context"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v4"
 	"log"
 	"os"
 	"pg-test-task-2024/internal/config"
@@ -59,7 +60,6 @@ func New(toExecChan <-chan uuid.UUID, worker db.TransactionWorker, customRunner 
 
 // Start starts separate goroutine
 func (e *Executor) Start(ctx context.Context) {
-	// TODO: use context.AfterFunc to register function for marking all running commands as canceled
 	go func() {
 		for {
 			select {
@@ -75,6 +75,20 @@ func (e *Executor) Start(ctx context.Context) {
 				e.logger.Printf("request to exec: %s", fname)
 
 				runnerCtx, runnerCancel := context.WithCancel(ctx)
+				stop := context.AfterFunc(runnerCtx, func() {
+					err := e.worker(ctx, func(tx pgx.Tx) error {
+						err := db.SetCommandFailed(ctx, tx, id, "canceled")
+						if err != nil {
+							return err
+						}
+						return tx.Commit(ctx)
+					})
+					if err != nil {
+						e.logger.Printf("failed to set command %s canceled: %s", id, err)
+					} else {
+						e.logger.Printf("set command %s canceled", id)
+					}
+				})
 
 				e.mtx.Lock()
 				e.runningCommands[id] = runnerCancel
@@ -85,6 +99,8 @@ func (e *Executor) Start(ctx context.Context) {
 
 					// run the command
 					e.runner(runnerCtx, id, e.worker)
+
+					stop()
 
 					e.mtx.Lock()
 					delete(e.runningCommands, id)
@@ -102,6 +118,7 @@ func (e *Executor) CancelCmd(id uuid.UUID) error {
 	if !ok {
 		return ErrNotFound
 	}
+	e.logger.Printf("request to cancel command %s", id.String())
 	cancel()
 	return nil
 }
