@@ -14,10 +14,14 @@ import (
 	"pg-test-task-2024/internal/config"
 	"pg-test-task-2024/internal/db"
 	"pg-test-task-2024/internal/db/migrations"
+	"pg-test-task-2024/internal/executor"
 	"time"
 )
 
 func Main() {
+	toExecChan := make(chan string)
+	defer close(toExecChan)
+
 	log.Println("starting server")
 	log.Println("prepare directory for commands...")
 	err := config.PrepareCmdDir(config.GetCmdDir())
@@ -35,12 +39,17 @@ func Main() {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
 
+	exe := executor.New(toExecChan, db.TransactionWorkerProvider(pool))
+	exe.Start(ctx)
+
 	host := config.GetHost()
 	port := config.GetPort()
 
 	log.Printf("configuring endpoints...")
 	r := api.ConfigureEndpoints(
-		db.TransactionWorkerProvider(pool))
+		db.TransactionWorkerProvider(pool),
+		executor.SubmitterProvider(toExecChan),
+	)
 	server := &http.Server{
 		Addr:    fmt.Sprintf("%s:%s", host, port),
 		Handler: r,
