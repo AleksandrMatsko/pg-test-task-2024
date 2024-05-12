@@ -70,7 +70,7 @@ func cmdReceiveHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// create file with -rwx------ permissions
-		f, err := os.OpenFile(config.GetCmdDir()+id.String(), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0700)
+		f, err := os.OpenFile(config.GetCmdDir()+id.String(), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 		if err != nil {
 			return fmt.Errorf("failed to create file: %s", err)
 		}

@@ -39,7 +39,7 @@ func Main() {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
 
-	exe := executor.New(toExecChan, db.TransactionWorkerProvider(pool))
+	exe := executor.New(toExecChan, db.TransactionWorkerProvider(pool), nil)
 	exe.Start(ctx)
 
 	host := config.GetHost()
