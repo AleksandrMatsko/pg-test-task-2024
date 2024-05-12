@@ -68,6 +68,49 @@ var correctScript = `#!/bin/bash
 echo 'Hello world!'
 `
 
+func TestCmdReceiveHandler_WithDBDown(t *testing.T) {
+	ctx := context.Background()
+	container := createTestContainer(ctx, t)
+	pool, err := pgxpool.Connect(ctx, config.GetDbConnStr())
+	if err != nil {
+		t.Fatalf("failed to connect to testcontainer db: %s", err)
+	}
+	doTransactional = db.TransactionWorkerProvider(pool)
+	execChan := make(chan string, 1)
+	submit = executor.SubmitterProvider(execChan)
+	t.Cleanup(func() {
+		doTransactional = nil
+		submit = nil
+	})
+
+	req := httptest.NewRequest("POST", "/api/v1/cmd", strings.NewReader(correctScript))
+	req.Header.Set("Content-Type", "text/plain")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(cmdReceiveHandler)
+
+	timeout := time.Minute * 2
+	err = container.Stop(ctx, &timeout)
+	if err != nil {
+		t.Fatalf("failed to stop testcontainer: %s", err)
+	}
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusInternalServerError {
+		t.Fatalf("handler returned wrong status code: got %v want %v", status, http.StatusInternalServerError)
+	}
+	if contentType := rr.Header().Get("Content-Type"); contentType != "application/json" {
+		t.Fatalf("handler returned wrong content type: got %v want %v", contentType, "application/json")
+	}
+
+	close(execChan)
+	fname := <-execChan
+	if fname != "" {
+		t.Fatalf("no data should be send to executor: got %v", fname)
+	}
+}
+
 func TestCmdReceiveHandler_WithNoCmdDir(t *testing.T) {
 	t.Setenv("EXECUTOR_CMD_DIR", "/tmp/not_exist_commands/")
 
@@ -78,6 +121,12 @@ func TestCmdReceiveHandler_WithNoCmdDir(t *testing.T) {
 		t.Fatalf("failed to connect to testcontainer db: %s", err)
 	}
 	doTransactional = db.TransactionWorkerProvider(pool)
+	execChan := make(chan string, 1)
+	submit = executor.SubmitterProvider(execChan)
+	t.Cleanup(func() {
+		doTransactional = nil
+		submit = nil
+	})
 
 	req := httptest.NewRequest("POST", "/api/v1/cmd", strings.NewReader(correctScript))
 	req.Header.Set("Content-Type", "text/plain")
@@ -100,6 +149,12 @@ func TestCmdReceiveHandler_WithNoCmdDir(t *testing.T) {
 	}
 	if rows.Next() {
 		t.Fatalf("expected no rows in db")
+	}
+
+	close(execChan)
+	fname := <-execChan
+	if fname != "" {
+		t.Fatalf("no data should be send to executor: got %v", fname)
 	}
 }
 
