@@ -4,24 +4,23 @@ import (
 	"context"
 	"github.com/google/uuid"
 	"log"
-	"os"
+	"pg-test-task-2024/internal/config"
 	"pg-test-task-2024/internal/db"
-	"strings"
 	"sync"
 )
 
 // Submitter should send data to specified chan
-type Submitter func(string)
+type Submitter func(uuid2 uuid.UUID)
 
-func SubmitterProvider(submitChan chan<- string) Submitter {
-	return func(fname string) {
-		submitChan <- fname
+func SubmitterProvider(submitChan chan<- uuid.UUID) Submitter {
+	return func(id uuid.UUID) {
+		submitChan <- id
 	}
 }
 
 type Executor struct {
 	// toExecChan is a chan to which the cmd receiver sends command ids
-	toExecChan <-chan string
+	toExecChan <-chan uuid.UUID
 
 	worker db.TransactionWorker
 
@@ -38,7 +37,7 @@ type Executor struct {
 	runningCommands map[uuid.UUID]context.CancelFunc
 }
 
-func New(toExecChan <-chan string, worker db.TransactionWorker, customRunner CmdRunner) *Executor {
+func New(toExecChan <-chan uuid.UUID, worker db.TransactionWorker, customRunner CmdRunner) *Executor {
 	defaultLogger := log.Default()
 	if customRunner == nil {
 		customRunner = defaultRunner
@@ -65,35 +64,29 @@ func (e *Executor) Start(ctx context.Context) {
 			case <-ctx.Done():
 				e.logger.Printf("stopping, because context done: %s", ctx.Err())
 				return
-			case fname, ok := <-e.toExecChan:
+			case id, ok := <-e.toExecChan:
 				if !ok {
 					e.logger.Printf("stopping, because chan closed")
 				}
+				fname := config.GetCmdDir() + id.String()
 				e.logger.Printf("request to exec: %s", fname)
-
-				strs := strings.SplitAfter(fname, "/")
-				id, err := uuid.Parse(strs[len(strs)-1])
-				if err != nil {
-					e.logger.Printf("bad file name: %s", fname)
-					continue
-				}
 
 				runnerCtx, runnerCancel := context.WithCancel(ctx)
 
 				e.mtx.Lock()
 				e.runningCommands[id] = runnerCancel
+				e.mtx.Unlock()
 				go func() {
-					defer os.Remove(fname)
+					//defer os.Remove(fname)
 					defer runnerCancel()
 
 					// run the command
-					e.runner(runnerCtx, fname, e.worker)
+					e.runner(runnerCtx, id, e.worker)
 
 					e.mtx.Lock()
 					delete(e.runningCommands, id)
 					e.mtx.Unlock()
 				}()
-				e.mtx.Unlock()
 			}
 		}
 	}()

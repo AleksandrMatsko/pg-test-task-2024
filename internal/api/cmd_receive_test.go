@@ -76,7 +76,7 @@ func TestCmdReceiveHandler_WithDBDown(t *testing.T) {
 		t.Fatalf("failed to connect to testcontainer db: %s", err)
 	}
 	doTransactional = db.TransactionWorkerProvider(pool)
-	execChan := make(chan string, 1)
+	execChan := make(chan uuid.UUID, 1)
 	submit = executor.SubmitterProvider(execChan)
 	t.Cleanup(func() {
 		doTransactional = nil
@@ -105,9 +105,9 @@ func TestCmdReceiveHandler_WithDBDown(t *testing.T) {
 	}
 
 	close(execChan)
-	fname := <-execChan
-	if fname != "" {
-		t.Fatalf("no data should be send to executor: got %v", fname)
+	gotId := <-execChan
+	if gotId != uuid.Nil {
+		t.Fatalf("no data should be send to executor: got %v", gotId)
 	}
 }
 
@@ -121,7 +121,7 @@ func TestCmdReceiveHandler_WithNoCmdDir(t *testing.T) {
 		t.Fatalf("failed to connect to testcontainer db: %s", err)
 	}
 	doTransactional = db.TransactionWorkerProvider(pool)
-	execChan := make(chan string, 1)
+	execChan := make(chan uuid.UUID, 1)
 	submit = executor.SubmitterProvider(execChan)
 	t.Cleanup(func() {
 		doTransactional = nil
@@ -152,9 +152,9 @@ func TestCmdReceiveHandler_WithNoCmdDir(t *testing.T) {
 	}
 
 	close(execChan)
-	fname := <-execChan
-	if fname != "" {
-		t.Fatalf("no data should be send to executor: got %v", fname)
+	gotId := <-execChan
+	if gotId != uuid.Nil {
+		t.Fatalf("no data should be send to executor: got %v", gotId)
 	}
 }
 
@@ -178,7 +178,7 @@ func TestCmdReceiveHandler_WithShellScript(t *testing.T) {
 		t.Fatalf("failed to connect to testcontainer db: %s", err)
 	}
 	doTransactional = db.TransactionWorkerProvider(pool)
-	execChan := make(chan string, 1)
+	execChan := make(chan uuid.UUID, 1)
 	submit = executor.SubmitterProvider(execChan)
 	t.Cleanup(func() {
 		doTransactional = nil
@@ -257,9 +257,9 @@ func TestCmdReceiveHandler_WithShellScript(t *testing.T) {
 	})
 
 	close(execChan)
-	fname := <-execChan
-	if fname != expectedFileName {
-		t.Fatalf("expected sending file name to executor's chan: got %v expected %v", fname, expectedFileName)
+	gotId := <-execChan
+	if gotId != parsedId {
+		t.Fatalf("expected sending id to executor's chan: got %v expected %v", gotId, parsedId)
 	}
 }
 

@@ -12,6 +12,7 @@ import (
 	"pg-test-task-2024/internal/config"
 	"pg-test-task-2024/internal/db"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -59,6 +60,7 @@ func cmdReceiveHandler(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	src = strings.ReplaceAll(src, "\r", "")
 
 	ctx, cancel := context.WithTimeout(r.Context(), time.Minute)
 	defer cancel()
@@ -82,7 +84,7 @@ func cmdReceiveHandler(w http.ResponseWriter, r *http.Request) {
 			return fmt.Errorf("failed to write body to file: %s", err)
 		}
 
-		if written != len(bytes) {
+		if written != len(src) {
 			_ = os.Remove(f.Name())
 			return fmt.Errorf(
 				"failed to write body to file: wrote %d of %d bytes expected",
@@ -96,7 +98,7 @@ func cmdReceiveHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		commandId = id
-		submit(f.Name())
+		submit(id)
 		return nil
 	})
 	if err != nil {

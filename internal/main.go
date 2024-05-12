@@ -5,6 +5,7 @@ import (
 	"fmt"
 	_ "github.com/golang-migrate/migrate/v4/database/pgx"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"log"
 	"net/http"
@@ -19,7 +20,7 @@ import (
 )
 
 func Main() {
-	toExecChan := make(chan string)
+	toExecChan := make(chan uuid.UUID, 1)
 	defer close(toExecChan)
 
 	log.Println("starting server")
