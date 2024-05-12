@@ -3,18 +3,16 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"pg-test-task-2024/internal/config"
 	"pg-test-task-2024/internal/db"
-	"pg-test-task-2024/internal/db/migrations"
+	"pg-test-task-2024/internal/db/dbtest"
 	"pg-test-task-2024/internal/executor"
 	"strings"
 	"testing"
@@ -59,8 +57,11 @@ func testCmdReceiveHandler_WithNotShellScript(t *testing.T, script string) {
 }
 
 func TestCmdReceiveHandler_WithNotShellScripts(t *testing.T) {
-	for _, script := range notShellScripts {
-		testCmdReceiveHandler_WithNotShellScript(t, script)
+	for i, script := range notShellScripts {
+		t.Run(fmt.Sprintf("bad script %v", i),
+			func(t *testing.T) {
+				testCmdReceiveHandler_WithNotShellScript(t, script)
+			})
 	}
 }
 
@@ -70,7 +71,7 @@ echo 'Hello world!'
 
 func TestCmdReceiveHandler_WithDBDown(t *testing.T) {
 	ctx := context.Background()
-	container := createTestContainer(ctx, t)
+	container := dbtest.CreateTestContainer(ctx, t)
 	pool, err := pgxpool.Connect(ctx, config.GetDbConnStr())
 	if err != nil {
 		t.Fatalf("failed to connect to testcontainer db: %s", err)
@@ -115,7 +116,7 @@ func TestCmdReceiveHandler_WithNoCmdDir(t *testing.T) {
 	t.Setenv("EXECUTOR_CMD_DIR", "/tmp/not_exist_commands/")
 
 	ctx := context.Background()
-	createTestContainer(ctx, t)
+	dbtest.CreateTestContainer(ctx, t)
 	pool, err := pgxpool.Connect(ctx, config.GetDbConnStr())
 	if err != nil {
 		t.Fatalf("failed to connect to testcontainer db: %s", err)
@@ -172,7 +173,7 @@ func TestCmdReceiveHandler_WithShellScript(t *testing.T) {
 	})
 
 	ctx := context.Background()
-	createTestContainer(ctx, t)
+	dbtest.CreateTestContainer(ctx, t)
 	pool, err := pgxpool.Connect(ctx, config.GetDbConnStr())
 	if err != nil {
 		t.Fatalf("failed to connect to testcontainer db: %s", err)
@@ -285,39 +286,4 @@ func checkCommandsEntities(t *testing.T, got, expected db.CommandEntity) {
 	if got.Signal != expected.Signal {
 		t.Fatalf("signals do not match: got %v, expected %v", got.Signal, expected.Signal)
 	}
-}
-
-const (
-	testDbUserName = "test_user"
-	testDbPassword = "test_password"
-	testDbName     = "test_db"
-)
-
-func createTestContainer(ctx context.Context, t *testing.T) *postgres.PostgresContainer {
-	pgContainer, err := postgres.RunContainer(ctx,
-		testcontainers.WithImage("postgres:16-alpine"),
-		postgres.WithUsername(testDbUserName),
-		postgres.WithPassword(testDbPassword),
-		postgres.WithDatabase(testDbName),
-		testcontainers.WithWaitStrategy(wait.ForLog("database system is ready to accept connections").
-			WithOccurrence(2).WithStartupTimeout(5*time.Second)))
-	if err != nil {
-		t.Fatalf("failed to init test container: %s", err)
-	}
-	t.Cleanup(func() {
-		err := pgContainer.Terminate(ctx)
-		if err != nil {
-			t.Fatalf("failed to terminate test container: %v", err)
-		}
-	})
-
-	connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
-	if err != nil {
-		t.Fatalf("")
-	}
-	t.Setenv("EXECUTOR_DB_CONN_STR", connStr)
-	t.Setenv("EXECUTOR_MIGRATIONS_SOURCE", "file://../../scripts/migrations")
-
-	migrations.Apply()
-	return pgContainer
 }

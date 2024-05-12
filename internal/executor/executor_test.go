@@ -3,7 +3,11 @@ package executor
 import (
 	"context"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
+	"pg-test-task-2024/internal/config"
 	"pg-test-task-2024/internal/db"
+	"pg-test-task-2024/internal/db/dbtest"
 	"sync"
 	"testing"
 )
@@ -54,7 +58,15 @@ func TestExecutor_CallsRunner(t *testing.T) {
 func TestExecutor_CancelsRunners_WhenCanceled(t *testing.T) {
 	execChan := make(chan uuid.UUID)
 	defer close(execChan)
-	var stubTransactionWorker db.TransactionWorker
+
+	ctx := context.Background()
+	dbtest.CreateTestContainer(ctx, t)
+	pool, err := pgxpool.Connect(ctx, config.GetDbConnStr())
+	if err != nil {
+		t.Fatalf("failed to connect to db: %v", err)
+	}
+
+	worker := db.TransactionWorkerProvider(pool)
 	numRunners := 10
 
 	wgRunnerEntered := sync.WaitGroup{}
@@ -63,9 +75,21 @@ func TestExecutor_CancelsRunners_WhenCanceled(t *testing.T) {
 	wgAfterCtx := sync.WaitGroup{}
 	wgAfterCtx.Add(numRunners)
 
-	ids := make([]uuid.UUID, 0, numRunners)
-	for i := 0; i < numRunners; i++ {
-		ids = append(ids, uuid.New())
+	var ids []uuid.UUID
+
+	err = worker(ctx, func(tx pgx.Tx) error {
+		ids = make([]uuid.UUID, 0, numRunners)
+		for i := 0; i < numRunners; i++ {
+			id, err := db.InsertNewCommand(ctx, tx, "")
+			if err != nil {
+				return err
+			}
+			ids = append(ids, id)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("failed to insert new commands: %v", err)
 	}
 
 	stubRunner := func(ctx context.Context, id uuid.UUID, worker db.TransactionWorker) {
@@ -74,7 +98,7 @@ func TestExecutor_CancelsRunners_WhenCanceled(t *testing.T) {
 		wgAfterCtx.Done()
 	}
 
-	exe := New(execChan, stubTransactionWorker, stubRunner)
+	exe := New(execChan, worker, stubRunner)
 	ctx, cancel := context.WithCancel(context.Background())
 
 	exe.Start(ctx)
@@ -91,4 +115,6 @@ func TestExecutor_CancelsRunners_WhenCanceled(t *testing.T) {
 
 	cancel()
 	wgAfterCtx.Wait()
+
+	// TODO: check that commands marked as canceled in db
 }

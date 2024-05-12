@@ -17,7 +17,7 @@ func cmdCancelHandler(w http.ResponseWriter, r *http.Request) {
 	s := mux.Vars(r)["id"]
 	id, err := uuid.Parse(s)
 	if err != nil {
-		logger.Printf("invalid UUID: %s", s)
+		logger.Printf("%s is invalid UUID: %s", s, err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		_ = encoder.Encode(errResponse{
