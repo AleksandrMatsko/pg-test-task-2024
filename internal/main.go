@@ -5,6 +5,7 @@ import (
 	"fmt"
 	_ "github.com/golang-migrate/migrate/v4/database/pgx"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"log"
 	"net/http"
@@ -14,10 +15,14 @@ import (
 	"pg-test-task-2024/internal/config"
 	"pg-test-task-2024/internal/db"
 	"pg-test-task-2024/internal/db/migrations"
+	"pg-test-task-2024/internal/executor"
 	"time"
 )
 
 func Main() {
+	toExecChan := make(chan uuid.UUID, 1)
+	defer close(toExecChan)
+
 	log.Println("starting server")
 	log.Println("prepare directory for commands...")
 	err := config.PrepareCmdDir(config.GetCmdDir())
@@ -35,12 +40,19 @@ func Main() {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
 
+	// TODO: mark all running commands as error commands and try to remove files
+
+	exe := executor.New(toExecChan, db.TransactionWorkerProvider(pool), nil)
+	exe.Start(ctx)
+
 	host := config.GetHost()
 	port := config.GetPort()
 
 	log.Printf("configuring endpoints...")
 	r := api.ConfigureEndpoints(
-		db.TransactionWorkerProvider(pool))
+		db.TransactionWorkerProvider(pool),
+		executor.SubmitterProvider(toExecChan),
+	)
 	server := &http.Server{
 		Addr:    fmt.Sprintf("%s:%s", host, port),
 		Handler: r,

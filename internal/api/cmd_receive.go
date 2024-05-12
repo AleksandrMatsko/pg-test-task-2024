@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 	"io"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"pg-test-task-2024/internal/config"
 	"pg-test-task-2024/internal/db"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -58,28 +60,20 @@ func cmdReceiveHandler(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	src = strings.ReplaceAll(src, "\r", "")
 
 	ctx, cancel := context.WithTimeout(r.Context(), time.Minute)
 	defer cancel()
+	var commandId uuid.UUID
 	err := doTransactional(ctx, func(tx pgx.Tx) error {
 		id, err := db.InsertNewCommand(ctx, tx, src)
 		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			_ = encoder.Encode(errResponse{
-				ShortDesc: "Internal Server Error",
-			})
 			return fmt.Errorf("failed to insert new command in db: %s", err)
 		}
 
 		// create file with -rwx------ permissions
-		f, err := os.OpenFile(config.GetCmdDir()+id.String(), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0700)
+		f, err := os.OpenFile(config.GetCmdDir()+id.String(), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			_ = encoder.Encode(errResponse{
-				ShortDesc: "Internal Server Error",
-			})
 			return fmt.Errorf("failed to create file: %s", err)
 		}
 		defer f.Close()
@@ -87,21 +81,11 @@ func cmdReceiveHandler(w http.ResponseWriter, r *http.Request) {
 		written, err := io.WriteString(f, src)
 		if err != nil {
 			_ = os.Remove(f.Name())
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			_ = encoder.Encode(errResponse{
-				ShortDesc: "Internal Server Error",
-			})
 			return fmt.Errorf("failed to write body to file: %s", err)
 		}
 
-		if written != len(bytes) {
+		if written != len(src) {
 			_ = os.Remove(f.Name())
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			_ = encoder.Encode(errResponse{
-				ShortDesc: "Internal Server Error",
-			})
 			return fmt.Errorf(
 				"failed to write body to file: wrote %d of %d bytes expected",
 				written, r.ContentLength)
@@ -110,22 +94,25 @@ func cmdReceiveHandler(w http.ResponseWriter, r *http.Request) {
 		err = tx.Commit(ctx)
 		if err != nil {
 			_ = os.Remove(f.Name())
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			_ = encoder.Encode(errResponse{
-				ShortDesc: "Internal Server Error",
-			})
 			return fmt.Errorf("failed to commit changes: %s", err)
 		}
 
-		// TODO: submit cmd to executor
-
-		w.Header().Set("Content-Type", "application/json")
-		_ = encoder.Encode(cmdReceivedResponse{Id: id.String()})
-		logger.Printf("Command added: %s", f.Name())
+		commandId = id
+		submit(id)
 		return nil
 	})
 	if err != nil {
 		logger.Printf("failed to save command: %s", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = encoder.Encode(errResponse{
+			ShortDesc: "Internal Server Error",
+		})
+		return
 	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = encoder.Encode(cmdReceivedResponse{Id: commandId.String()})
+	logger.Printf("command added: %s", commandId)
+
 }

@@ -6,7 +6,7 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
-// TransactionWorker is type for function used in http handlers to work with DB.
+// TransactionWorker is type of function used to work with DB.
 // It should begin transaction and rollback it. If you need to commit changes
 // use tx.Commit directly.
 //

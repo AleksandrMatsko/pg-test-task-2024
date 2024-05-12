@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
+	"syscall"
 )
 
 func InsertNewCommand(ctx context.Context, tx pgx.Tx, source string) (uuid.UUID, error) {
@@ -18,4 +19,36 @@ func InsertNewCommand(ctx context.Context, tx pgx.Tx, source string) (uuid.UUID,
 		return uuid.Nil, ErrInvalidUUID
 	}
 	return id.UUID, nil
+}
+
+func SetCommandFinished(ctx context.Context, tx pgx.Tx, id uuid.UUID, status syscall.WaitStatus) error {
+	var err error
+	if status.Exited() {
+		_, err = tx.Exec(ctx, `
+			UPDATE commands SET status = $1, exit_code = $2 
+				WHERE id = $3
+			`, Finished, status.ExitStatus(), uuid.NullUUID{UUID: id, Valid: true})
+	} else {
+		_, err = tx.Exec(ctx, `
+			UPDATE commands SET status = $1, signal = $2 
+				WHERE id = $3
+			`, Finished, status.Signal(), uuid.NullUUID{UUID: id, Valid: true})
+	}
+	return err
+}
+
+func SetCommandFailed(ctx context.Context, tx pgx.Tx, id uuid.UUID, description string) error {
+	_, err := tx.Exec(ctx, `
+			UPDATE commands SET status = $1, status_desc = $2 
+				WHERE id = $3
+			`, Error, description, uuid.NullUUID{UUID: id, Valid: true})
+	return err
+}
+
+func AppendCommandOutput(ctx context.Context, tx pgx.Tx, id uuid.UUID, output string) error {
+	_, err := tx.Exec(ctx, `
+			UPDATE commands SET output = COALESCE(output, '') || $1
+				WHERE id = $2
+			`, output, uuid.NullUUID{UUID: id, Valid: true})
+	return err
 }
