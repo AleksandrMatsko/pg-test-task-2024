@@ -24,7 +24,7 @@ Service is configured by setting some environment variables:
 - `EXECUTOR_PORT` - port to listen
 - `EXECUTOR_CMD_DIR` - path to directory, where files with commands will be stored. 
 
-    File with command will be deleted when the script will be finished or if any error occurred.
+    File with command will be deleted when the script finishes or if any error occurs.
 
 - `EXECUTOR_DB_CONN_STR` - connection string which has format `postgres://{user}:{password}@{host}:{port}/{dbname}`
     
@@ -41,7 +41,7 @@ go test -race -v ./...
 # Some info about service
 
 Service is used for running bash-scripts. You can interact with it by using endpoints:
-- `/api/v1/cmd` - POST for uploading command, GET for listing all command
+- `/api/v1/cmd` - POST for uploading command, GET for listing all commands
 - `/api/v1/{id}` - for getting more info about command with following id
 - `/api/v1/{id}/cancel` - for canceling script execution 
 
@@ -62,19 +62,19 @@ If any error occurred, server returns json (example below) and sets status code 
 - Method: **POST**
 - Request Content-Type: text/plain
 - Request Body: contains script
-- On success returns json (example below) and sets status code to 200:
+- On success returns json (example below) and sets status code to `200`:
 ```json
 {
     "id": "9d887cf8-7b7e-44b0-b7a6-8be72efd917a"
 }
 ```
-- On failure codes may be: 400, 415, 500
+- On failure status codes may be: `400`, `415`, `500`
 
 #### Get commands list
 
 - Method: **GET**
 - No Body
-- On success returns json (example below) and sets status code to 200:
+- On success returns json (example below) and sets status code to `200`:
 ```json
 {
   "cmd-list": [
@@ -103,7 +103,7 @@ If any error occurred, server returns json (example below) and sets status code 
   ]
 }
 ```
-- On failure code: 500
+- On failure status code: `500`
 
 ### `/api/v1/{id}`
 
@@ -112,7 +112,7 @@ If any error occurred, server returns json (example below) and sets status code 
 - Method: **GET**
 - No Body
 - `{id}` - is a parameter returned from `POST /api/v1/cmd`
-- On success returns json (examples below) and sets status code to 200:
+- On success returns json (examples below) and sets status code to `200`:
 
 Example 1:
 ```json
@@ -137,7 +137,7 @@ Example 2:
     "signal": 9
 }
 ```
-- On failure codes may be: 400, 404, 500
+- On failure status codes may be: `400`, `404`, `500`
 
 ### `/api/v1/{id}/cancel`
 
@@ -146,7 +146,7 @@ Example 2:
 - Method: **PATCH**
 - No Body
 - `{id}` - is a parameter returned from `POST /api/v1/cmd`
-- On success status code is 202
-- On failure status codes: 400, 404, 500
+- On success status code is `202`
+- On failure status codes may be: `400`, `404`, `500`
 
 Trying to cancel not running command will result in 404 Not found.
