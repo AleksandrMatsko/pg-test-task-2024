@@ -44,3 +44,109 @@ Service is used for running bash-scripts. You can interact with it by using endp
 - `/api/v1/cmd` - POST for uploading command, GET for listing all command
 - `/api/v1/{id}` - for getting more info about command with following id
 - `/api/v1/{id}/cancel` - for canceling script execution 
+
+## Info about endpoints
+
+If any error occurred, server returns json (example below) and sets status code `4xx` or `5xx`
+```json
+{
+    "short-desc": "Bad Request",
+    "long-desc": "Not a shell script"
+}
+```
+
+### `/api/v1/cmd`
+
+#### Start new command
+
+- Method: **POST**
+- Request Content-Type: text/plain
+- Request Body: contains script
+- On success returns json (example below) and sets status code to 200:
+```json
+{
+    "id": "9d887cf8-7b7e-44b0-b7a6-8be72efd917a"
+}
+```
+- On failure codes may be: 400, 415, 500
+
+#### Get commands list
+
+- Method: **GET**
+- No Body
+- On success returns json (example below) and sets status code to 200:
+```json
+{
+  "cmd-list": [
+    {
+      "id": "c5ef42d4-515a-4ec0-bb89-1a15ad522bf4",
+      "status": "error",
+      "status-desc": "server got down"
+    },
+    {
+      "id": "f1e57531-b32a-4ccf-bc1d-59466682d9be",
+      "status": "finished",
+      "status-desc": "",
+      "exit-code": 0
+    },
+    {
+      "id": "05172c64-ba92-442f-baac-a184e545b7bf",
+      "status": "running",
+      "status-desc": ""
+    },
+    {
+      "id": "f1e57531-b32a-4ccf-bc1d-59466682d9be",
+      "status": "finished",
+      "status-desc": "",
+      "signal": 9
+    }
+  ]
+}
+```
+- On failure code: 500
+
+### `/api/v1/{id}`
+
+#### Get commands info
+
+- Method: **GET**
+- No Body
+- `{id}` - is a parameter returned from `POST /api/v1/cmd`
+- On success returns json (examples below) and sets status code to 200:
+
+Example 1:
+```json
+{
+    "id": "f1e57531-b32a-4ccf-bc1d-59466682d9be",
+    "source": "#!/bin/bash\n\nls\n",
+    "status": "finished",
+    "status-desc": "",
+    "output": "Dockerfile\nREADME.md\nbin\ndocker-compose.yaml\ngo.mod\ngo.sum\ninternal\nmain.go\npg-test-task-2024\npkg\nscripts\nsrc\ntask.md\n",
+    "exit-code": 0
+}
+```
+
+Example 2:
+```json
+{
+    "id": "08783b71-4345-47d4-8e67-f91845566843",
+    "source": "#!/bin/bash\n\nsleep 200\n",
+    "status": "finished",
+    "status-desc": "",
+    "output": "",
+    "signal": 9
+}
+```
+- On failure codes may be: 400, 404, 500
+
+### `/api/v1/{id}/cancel`
+
+#### Cancel the command
+
+- Method: **PATCH**
+- No Body
+- `{id}` - is a parameter returned from `POST /api/v1/cmd`
+- On success status code is 202
+- On failure status codes: 400, 404, 500
+
+Trying to cancel not running command will result in 404 Not found.
