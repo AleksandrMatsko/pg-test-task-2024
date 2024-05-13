@@ -163,9 +163,9 @@ func TestGetSingleCmd_WithCmdInDB(t *testing.T) {
 		t.Fatalf("outputs do not match: got %v, expected %v", gotDto.Output, "")
 	}
 	if gotDto.Signal != nil {
-		t.Fatalf("signals do not match: got %v, expected %v", gotDto.Signal, "")
+		t.Fatalf("signals do not match: got %v, expected nil", gotDto.Signal)
 	}
 	if gotDto.ExitCode != nil {
-		t.Fatalf("exit code do not match: got %v, expected %v", gotDto.ExitCode, "")
+		t.Fatalf("exit code do not match: got %v, expected nil", gotDto.ExitCode)
 	}
 }
