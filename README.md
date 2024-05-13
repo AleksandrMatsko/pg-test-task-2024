@@ -9,7 +9,8 @@ docker compose up
 
 ## Other
 
-If you need to run the service outside the container please use commands below:
+If you need to run the service outside the container please use commands below and 
+pay attention to configuration.
 
 ```shell
 go build -v pg-test-task-2024
@@ -36,3 +37,10 @@ Service is configured by setting some environment variables:
 ```shell
 go test -race -v ./...
 ```
+
+# Some info about service
+
+Service is used for running bash-scripts. You can interact with it by using endpoints:
+- `/api/v1/cmd` - POST for uploading command, GET for listing all command
+- `/api/v1/{id}` - for getting more info about command with following id
+- `/api/v1/{id}/cancel` - for canceling script execution 
