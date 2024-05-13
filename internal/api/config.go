@@ -25,6 +25,7 @@ func ConfigureEndpoints(starter db.TransactionWorker, submitter executor.Submitt
 	r.HandleFunc("/api/v1/ping", pingHandler)
 	r.HandleFunc("/api/v1/cmd", cmdReceiveHandler).Methods(http.MethodPost)
 	r.HandleFunc("/api/v1/cmd/{id}/cancel", cmdCancelHandler).Methods(http.MethodPatch)
+	r.HandleFunc("/api/v1/cmd/{id}", getSingleCmdHandler).Methods(http.MethodGet)
 
 	return r
 }

@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 	"syscall"
@@ -51,4 +52,26 @@ func AppendCommandOutput(ctx context.Context, tx pgx.Tx, id uuid.UUID, output st
 				WHERE id = $2
 			`, output, uuid.NullUUID{UUID: id, Valid: true})
 	return err
+}
+
+func GetSingleCommand(ctx context.Context, tx pgx.Tx, id uuid.UUID) (CommandEntity, error) {
+	var resEntity CommandEntity
+	err := tx.QueryRow(ctx, `
+		SELECT * FROM commands WHERE id = $1
+		`, uuid.NullUUID{UUID: id, Valid: true}).
+		Scan(
+			&resEntity.Id,
+			&resEntity.Source,
+			&resEntity.Status,
+			&resEntity.StatusDesc,
+			&resEntity.Output,
+			&resEntity.ExitCode,
+			&resEntity.Signal)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return CommandEntity{}, ErrEntityNotFound
+		}
+		return CommandEntity{}, err
+	}
+	return resEntity, nil
 }
