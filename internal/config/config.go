@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 func GetHost() string {
@@ -26,7 +27,10 @@ func GetCmdDir() string {
 	if s == "" {
 		return defaultCmdDir
 	}
-	return s
+	if strings.HasSuffix(s, "/") {
+		return s
+	}
+	return s + "/"
 }
 
 func GetDbConnStr() string {

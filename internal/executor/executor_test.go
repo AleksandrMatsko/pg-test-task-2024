@@ -86,7 +86,7 @@ func TestExecutor_CancelsRunners_WhenCanceled(t *testing.T) {
 			}
 			ids = append(ids, id)
 		}
-		return nil
+		return tx.Commit(ctx)
 	})
 	if err != nil {
 		t.Fatalf("failed to insert new commands: %v", err)

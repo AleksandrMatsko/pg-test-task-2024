@@ -17,6 +17,8 @@ const (
 )
 
 func CreateTestContainer(ctx context.Context, t *testing.T) *postgres.PostgresContainer {
+	t.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
+
 	pgContainer, err := postgres.RunContainer(ctx,
 		testcontainers.WithImage("postgres:16-alpine"),
 		postgres.WithUsername(testDbUserName),

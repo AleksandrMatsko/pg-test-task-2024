@@ -14,6 +14,9 @@ func TestCmdCancel_WithBadUrl(t *testing.T) {
 	req := httptest.NewRequest("PATCH", "/api/v1/cmd/not-uuid/cancel", nil)
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(cmdCancelHandler)
+	req = mux.SetURLVars(req, map[string]string{
+		"id": "not-uuid",
+	})
 
 	handler.ServeHTTP(rr, req)
 

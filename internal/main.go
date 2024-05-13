@@ -6,6 +6,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/pgx"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"log"
 	"net/http"
@@ -18,6 +19,28 @@ import (
 	"pg-test-task-2024/internal/executor"
 	"time"
 )
+
+func prepareDB(ctx context.Context, worker db.TransactionWorker) {
+	log.Println("check if there are commands with running status...")
+	var foundCmds int
+	err := worker(ctx, func(tx pgx.Tx) error {
+		ids, err := db.MarkRunningCmdsError(ctx, tx)
+		if err != nil {
+			return err
+		}
+
+		for _, id := range ids {
+			_ = os.Remove(config.GetCmdDir() + id.String())
+		}
+		foundCmds = len(ids)
+
+		return tx.Commit(ctx)
+	})
+	if err != nil {
+		log.Fatalf("failed to change commands status from running to error: %s", err)
+	}
+	log.Printf("updated %d commands", foundCmds)
+}
 
 func Main() {
 	toExecChan := make(chan uuid.UUID, 1)
@@ -41,7 +64,7 @@ func Main() {
 	}
 	defer pool.Close()
 
-	// TODO: mark all running commands as error commands and try to remove files
+	prepareDB(ctx, db.TransactionWorkerProvider(pool))
 
 	exe := executor.New(toExecChan, db.TransactionWorkerProvider(pool), nil)
 	exe.Start(ctx)
