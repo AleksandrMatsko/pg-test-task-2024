@@ -22,7 +22,6 @@ func ConfigureEndpoints(starter db.TransactionWorker, submitter executor.Submitt
 	r.NotFoundHandler = notFoundHandler{}
 	r.MethodNotAllowedHandler = methodNotAllowedHandler{}
 
-	r.HandleFunc("/api/v1/ping", pingHandler)
 	r.HandleFunc("/api/v1/cmd", cmdReceiveHandler).Methods(http.MethodPost)
 	r.HandleFunc("/api/v1/cmd", getCmdListHandler).Methods(http.MethodGet)
 	r.HandleFunc("/api/v1/cmd/{id}", getSingleCmdHandler).Methods(http.MethodGet)
