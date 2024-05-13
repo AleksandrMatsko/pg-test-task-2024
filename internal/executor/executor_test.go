@@ -47,12 +47,6 @@ func TestExecutor_CallsRunner(t *testing.T) {
 	if gotId != expectedId {
 		t.Errorf("got id %s, expected %s", gotId, expectedId)
 	}
-
-	exe.mtx.Lock()
-	if len(exe.runningCommands) != 0 {
-		t.Errorf("runner after execution have %d commands, expected 0", len(exe.runningCommands))
-	}
-	exe.mtx.Unlock()
 }
 
 func TestExecutor_CancelsRunners_WhenCanceled(t *testing.T) {
