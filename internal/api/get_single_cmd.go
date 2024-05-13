@@ -58,10 +58,10 @@ func getSingleCmdHandler(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		rsp = toSingleCmdDto(entity)
-		return nil
+		return tx.Commit(ctx)
 	})
 	if err != nil {
-		logger.Printf("failed to get command info: %T %s", err, err)
+		logger.Printf("failed to get command info: %s", err)
 		w.Header().Set("Content-Type", "application/json")
 		if errors.Is(err, db.ErrEntityNotFound) {
 			w.WriteHeader(http.StatusNotFound)

@@ -75,3 +75,29 @@ func GetSingleCommand(ctx context.Context, tx pgx.Tx, id uuid.UUID) (CommandEnti
 	}
 	return resEntity, nil
 }
+
+func GetCommandsShortened(ctx context.Context, tx pgx.Tx) ([]CommandEntity, error) {
+	rows, err := tx.Query(ctx, `
+		SELECT id, status, status_desc, exit_code, signal 
+		FROM commands
+		`)
+	if err != nil {
+		return []CommandEntity{}, err
+	}
+	defer rows.Close()
+	entities := make([]CommandEntity, 0)
+	for rows.Next() {
+		var resEntity CommandEntity
+		err = rows.Scan(
+			&resEntity.Id,
+			&resEntity.Status,
+			&resEntity.StatusDesc,
+			&resEntity.ExitCode,
+			&resEntity.Signal)
+		if err != nil {
+			return []CommandEntity{}, err
+		}
+		entities = append(entities, resEntity)
+	}
+	return entities, nil
+}
