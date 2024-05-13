@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"io"
 	"net/http"
@@ -236,17 +237,14 @@ func TestCmdReceiveHandler_WithShellScript(t *testing.T) {
 	}
 
 	var resEntity db.CommandEntity
-	err = pool.QueryRow(ctx,
-		`SELECT * FROM commands WHERE commands.id = $1`,
-		uuid.NullUUID{UUID: parsedId, Valid: true}).
-		Scan(
-			&resEntity.Id,
-			&resEntity.Source,
-			&resEntity.Status,
-			&resEntity.StatusDesc,
-			&resEntity.Output,
-			&resEntity.ExitCode,
-			&resEntity.Signal)
+	err = doTransactional(ctx, func(tx pgx.Tx) error {
+		entity, err := db.GetSingleCommand(ctx, tx, parsedId)
+		if err != nil {
+			return err
+		}
+		resEntity = entity
+		return nil
+	})
 	if err != nil {
 		t.Fatalf("failed to get inserted entity: %s", err)
 	}
